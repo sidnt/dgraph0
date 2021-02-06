@@ -1,6 +1,6 @@
 package dgraph0
 
 enum DgError:
-  case UnknownError
+  case DgErr(reason: String)
   case ClientCreationFailed
   case HostDown
