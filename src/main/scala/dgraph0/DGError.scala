@@ -1,5 +1,6 @@
 package dgraph0
 
-enum DGError:
+enum DgError:
   case UnknownError
   case ClientCreationFailed
+  case HostDown

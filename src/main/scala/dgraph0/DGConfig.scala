@@ -4,11 +4,15 @@ import zio._
 
 object dgConfig:
 
-  type DGConfig = Has[dgConfig.Service]
+  type DgConfig = Has[dgConfig.Service]
   
   trait Service:
-    def host = UIO("localhost")
-    def port = UIO(9180)
+    val host: String
+    val port: Int
 
-  //accessor
-  val dgConfigAccess = ZIO.access[DGConfig](_.get)
+  val defaultDgConfig: ZLayer[Any, Nothing, DgConfig] = ZLayer.succeed(
+    new Service {
+      val host = "localhost"
+      val port = 9080
+    }
+  )

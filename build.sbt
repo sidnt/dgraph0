@@ -10,6 +10,6 @@ lazy val root = project
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % zioV,
       "dev.zio" %% "zio-streams" % zioV,
-      "io.dgraph" % "dgraph4j" % "2.1.0"
+      "io.dgraph" % "dgraph4j" % "20.11.0"
     )
   )
