@@ -31,9 +31,10 @@ object dgHandle {
    * so as to close the db connection at the end */
   val getDgClient: URIO[DgHandle, DgraphClient] = ZIO.access[DgHandle](_.get.dgHandle._2)
 
-  def f(dgcs: dgConfig.Service): ZManaged[Console with Clock, DgError, dgHandle.Service] =
+  val f: ZManaged[DgConfig with Clock with Console, DgError, dgHandle.Service] =
     ZManaged.make(
       for {
+        dgcs    <-  ZIO.access[DgConfig](_.get)
         _       <-  consoleLog(s"Attempting to build channel")
         channel <-  Task(ManagedChannelBuilder.forAddress(dgcs.host, dgcs.port).usePlaintext().build()) orElse IO.fail(DgErr("stub creation failed"))
         _       <-  consoleLog(s"got channel: $channel")
@@ -53,7 +54,7 @@ object dgHandle {
       } yield ()
     )
 
-  val defaultDgHandle: ZLayer[Console with Clock with DgConfig, DgError, DgHandle] =
-    ZLayer.fromServiceManaged(f)
-
+  val defaultDgHandle: ZLayer[DgConfig with Clock with Console, DgError, DgHandle] =
+    ZLayer.fromManaged(f)
+    
 }
