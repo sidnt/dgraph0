@@ -42,7 +42,7 @@ object dgHandle {
         stub    <-  Task(DgraphGrpc.newStub(channel)) orElse IO.fail(DgErr("stub creation failed"))
         _       <-  consoleLog(s"got stub: $stub")
         _       <-  consoleLog(s"Attempting to create new DgraphClient")
-        dgClient  = new DgraphClient(stub)
+        dgClient  <- Task(new DgraphClient(stub)) orElse IO.fail(DgErr("DgraphClient creation failed"))
         _       <-  consoleLog(s"got DgraphClient: $dgClient")
         dghs    <-  UIO(new dgHandle.Service { val dgHandle = (channel, dgClient) })
       } yield dghs
@@ -56,5 +56,5 @@ object dgHandle {
 
   val defaultDgHandle: ZLayer[DgConfig with Clock with Console, DgError, DgHandle] =
     ZLayer.fromManaged(f)
-    
+
 }
