@@ -12,10 +12,37 @@ import dgraph0.dgHandle._
  * sometimes, we need something as simple as a message registry to get started
  * message registry provides only 2 functionalities
  * 1. store a string message
- * 2. query messages based on a string (not yet)
+ * 2. query messages based on a string
  */
 
- // just in case we want a clean slate to begin with again
+object Cli extends App {
+
+  val getChoice = for {
+    choice: String  <- putStr("\nenter\n1. to store a string message.\n2. to query messages based on terms.\nAnything else to exit.\nyour choice> ") *> getStrLn.orDie
+    choiceInt       <-  Task { choice.toInt } orElse UIO(-1)
+  } yield choiceInt
+
+  def selectZio(i: Int): UIO[ZIO[Console & DgHandle, domain.Error, Unit]] = UIO(
+    i match {
+      case 1 => StoreUserInputMessage.storeUserInputMessage *> app
+      case 2 => QueryMessagesWithTerms.queryMessagesWithTerm *> app
+      case _ => ZIO.unit
+    }
+  )
+
+  val app = for {
+    ch <- getChoice
+    z <- selectZio(ch)
+    _ <- z
+  } yield ()
+
+  def run(args: List[String]) = 
+    app.
+    provideCustomLayer(App0.l2).exitCode
+
+}
+
+ /* just in case we want a clean slate to begin with again */
 object DropAll extends App:
 
   val dropAllInDgraph = for {
@@ -107,9 +134,9 @@ object QueryMessagesWithTerms extends App {
   /* For read-only transactions, there is no need to call Transaction.discard, which is equivalent to a no-op. */
   val queryMessagesWithTerm = for {
     dgClient        <- getDgClient
-    queryTerms      <- putStrLn("\nenter terms (separated by whitespace) you want to search messages with\n") *> getStrLn.orDie
+    queryTerms      <- putStr("\nenter terms (separated by whitespace) you want to search messages with\nyour input> ") *> getStrLn.orDie
     dgQueryString   = makeDgQueryString(queryTerms)
-    response        <- Task(dgClient.newReadOnlyTransaction.query(dgQueryString))
+    response        <- Task(dgClient.newReadOnlyTransaction.query(dgQueryString)) orElse IO.fail(domain.Error("readonly transaction failed"))
     stringResponse  = response.getJson.toStringUtf8
     _               <- putStrLn("\ngot response>\n")
     _               <- putStrLn(getMessagesFromQueryResultString(stringResponse).fold(_ => "parsing failed", _.toString))
