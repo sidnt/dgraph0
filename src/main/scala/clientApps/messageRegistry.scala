@@ -77,3 +77,28 @@ object StoreUserInputMessage extends App {
   def run(args: List[String]) = storeUserInputMessage.provideCustomLayer(App0.l2).exitCode
 
 }
+
+object QueryMessagesWithTerms extends App {
+
+  def makeDgQueryString(terms: String) = s"""
+  {
+    queryMessages(func: anyofterms(message, "$terms")) {
+      message
+    }
+  }
+  """
+
+  /* For read-only transactions, there is no need to call Transaction.discard, which is equivalent to a no-op. */
+  val queryMessagesWithTerm = for {
+    dgClient <- getDgClient
+    queryTerms <- putStrLn("\nenter terms (separated by whitespace) you want to search messages with") *> getStrLn.orDie
+    dgQueryString = makeDgQueryString(queryTerms)
+    response <- Task(dgClient.newReadOnlyTransaction.query(dgQueryString))
+    _ <- putStrLn("got raw response> ")
+    _ <- putStrLn(response.getJson.toStringUtf8)
+    _ <- putStrLn("")
+  } yield ()
+
+  def run(args: List[String]) = queryMessagesWithTerm.provideCustomLayer(App0.l2).exitCode
+  
+}
