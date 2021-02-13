@@ -80,24 +80,43 @@ object StoreUserInputMessage extends App {
 
 object QueryMessagesWithTerms extends App {
 
+  case class Message(message: String)
+  case class QueryMessageResults(queryMessagesResults: List[Message])
+
+  /* this makes it #hardcoded to message schema in the db
+   * if the selection of fields returned is changed, the decoding doesn't fail if `uid` is added
+   * if `message` is removed, then the decoding fails
+   * probably circe is selecting only the fields present and not caring about the extra ones */
   def makeDgQueryString(terms: String) = s"""
   {
-    queryMessages(func: anyofterms(message, "$terms")) {
+    queryMessagesResults(func: anyofterms(message, "$terms")) {
       message
     }
   }
   """
 
+  def getMessagesFromQueryResultString(qrs: String) = {
+    import io.circe._
+    import parser.decode
+    import generic.auto._
+    val x = decode[QueryMessageResults](qrs)
+    x.map(qmr => qmr.queryMessagesResults.map(m => m.message).mkString("\n"))
+    /* ^ just takes the QueryMessageResults case class and makes a printable sequence of messages out of it */
+  }
+
   /* For read-only transactions, there is no need to call Transaction.discard, which is equivalent to a no-op. */
   val queryMessagesWithTerm = for {
-    dgClient <- getDgClient
-    queryTerms <- putStrLn("\nenter terms (separated by whitespace) you want to search messages with") *> getStrLn.orDie
-    dgQueryString = makeDgQueryString(queryTerms)
-    response <- Task(dgClient.newReadOnlyTransaction.query(dgQueryString))
-    _ <- putStrLn("got raw response> ")
-    _ <- putStrLn(response.getJson.toStringUtf8)
-    _ <- putStrLn("")
+    dgClient        <- getDgClient
+    queryTerms      <- putStrLn("\nenter terms (separated by whitespace) you want to search messages with\n") *> getStrLn.orDie
+    dgQueryString   = makeDgQueryString(queryTerms)
+    response        <- Task(dgClient.newReadOnlyTransaction.query(dgQueryString))
+    stringResponse  = response.getJson.toStringUtf8
+    _               <- putStrLn("\ngot response>\n")
+    _               <- putStrLn(getMessagesFromQueryResultString(stringResponse).fold(_ => "parsing failed", _.toString))
+    _               <- putStrLn("\nbye")
   } yield ()
+
+  
 
   def run(args: List[String]) = queryMessagesWithTerm.provideCustomLayer(App0.l2).exitCode
   
