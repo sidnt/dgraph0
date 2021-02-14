@@ -34,23 +34,15 @@ object dgHandle {
   val f: ZManaged[DgConfig with Clock with Console, DgError, dgHandle.Service] =
     ZManaged.make(
       for {
-        dgcs    <-  ZIO.access[DgConfig](_.get)
-        _       <-  consoleLog(s"Attempting to build channel")
-        channel <-  Task(ManagedChannelBuilder.forAddress(dgcs.host, dgcs.port).usePlaintext().build()) orElse IO.fail(DgErr("stub creation failed"))
-        _       <-  consoleLog(s"got channel: $channel")
-        _       <-  consoleLog(s"Attempting to build stub")
-        stub    <-  Task(DgraphGrpc.newStub(channel)) orElse IO.fail(DgErr("stub creation failed"))
-        _       <-  consoleLog(s"got stub: $stub")
-        _       <-  consoleLog(s"Attempting to create new DgraphClient")
-        dgClient  <- Task(new DgraphClient(stub)) orElse IO.fail(DgErr("DgraphClient creation failed"))
-        _       <-  consoleLog(s"got DgraphClient: $dgClient")
-        dghs    <-  UIO(new dgHandle.Service { val dgHandle = (channel, dgClient) })
+        dgcs      <-  ZIO.access[DgConfig](_.get)
+        channel   <-  Task(ManagedChannelBuilder.forAddress(dgcs.host, dgcs.port).usePlaintext().build()) orElse IO.fail(DgErr("stub creation failed"))
+        stub      <-  Task(DgraphGrpc.newStub(channel)) orElse IO.fail(DgErr("stub creation failed"))
+        dgClient  <-  Task(new DgraphClient(stub)) orElse IO.fail(DgErr("DgraphClient creation failed"))
+        dghs      <-  UIO(new dgHandle.Service { val dgHandle = (channel, dgClient) })
       } yield dghs
     )(
       dghs => for {
-        _ <- consoleLog(s"attempting to close channel: ${dghs.dgHandle._1}")
         _ <- UIO(dghs.dgHandle._1.shutdown())
-        _ <- consoleLog(s"succeeded in closing channel")
       } yield ()
     )
 
