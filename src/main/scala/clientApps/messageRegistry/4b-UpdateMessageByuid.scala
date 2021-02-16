@@ -6,6 +6,10 @@ import console._
 import io.dgraph._
 import DgraphProto._
 
+import io.circe._
+import parser.decode
+import generic.auto._
+
 import com.google.protobuf.ByteString
 
 import dgraph0.dgHandle._
@@ -26,12 +30,16 @@ def updateMessageByUid(uid: String, updatedMessage: String) =
 
 object UpdateMessageByUid extends App {
 
-  val updateMessageByUid0 = for {
+  val updateMessageByUid0 = (for {
     uid <- putStrLn("give the correct uid to update> ") *> getStrLn.orDie
+    b   <- doesMessageExist(uid)
+    _   <- if (b) IO.unit else IO.fail(domain.Error("message doesn't already exist")) 
     msg <- putStrLn("give the updated message to store> ") *> getStrLn.orDie
-    _ <- updateMessageByUid(uid, msg).catchAll(de => putStrLn(de.toString))
-  } yield ()
+    _ <- updateMessageByUid(uid, msg)
+  } yield ()).catchAll(de => putStrLn(de.toString))
 
-  def run(args: List[String]) = updateMessageByUid0.provideCustomLayer(clientApps.layers.l2).exitCode
+  def run(args: List[String]) = 
+    updateMessageByUid0.
+    provideCustomLayer(clientApps.layers.l2).exitCode
 
 }
