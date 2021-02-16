@@ -31,7 +31,7 @@ object Cli extends App {
    * it creates an integer representing the choice of the user */
   val getChoice =
     for {
-      _               <-  putStr("\nenter\n1. to store a new string message.\n2. to query messages based on terms.\n3. to update message by id\nAnything else to exit.\nyour choice> ")  
+      _               <-  putStr("\nenter\n1. to store a new string message.\n2. to query messages based on terms.\n3. to update message by uid\n4. to delete message by uid.\nAnything else to exit.\nyour choice> ")  
       choice: String  <-  getStrLn.orDie
       choiceInt       <-  Task { choice.toInt } orElse (putStrLn("your choice> exit app") *> UIO(-1))
     } yield choiceInt
@@ -41,6 +41,7 @@ object Cli extends App {
       case 1 => StoreUserInputMessage.storeUserInputMessage *> app
       case 2 => QueryMessagesWithTerms.queryMessagesWithTerm *> app
       case 3 => UpdateMessageByUid.updateMessageByUid0 *> app
+      case 4 => DeleteMessageByUid.deleteMessageByUid0 *> app
       case _ => ZIO.unit
     }
   )
