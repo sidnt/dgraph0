@@ -18,6 +18,7 @@ object QueryMessagesWithTerms extends App {
   def makeDgQueryString(terms: String) = s"""
   {
     queryMessagesResults(func: anyofterms(message, "$terms")) {
+      uid,
       message
     }
   }
@@ -26,7 +27,7 @@ object QueryMessagesWithTerms extends App {
   def parseMessagesFromQueryResultString(qrs: String): Either[Error, String] = {
     
     val x = decode[QueryMessageResults](qrs)
-    x.map(qmr => qmr.queryMessagesResults.map(m => m.message).mkString("\n"))
+    x.map(qmr => qmr.queryMessagesResults.map(m => m.uid + " > " + m.message).mkString("\n"))
     /* ^ just takes the QueryMessageResults case class and makes a printable sequence of messages out of it */
   }
 
@@ -37,7 +38,7 @@ object QueryMessagesWithTerms extends App {
     dgClient        <- getDgClient
     response        <- Task(dgClient.newReadOnlyTransaction.query(dgQueryString)) orElse IO.fail(domain.Error("readonly transaction failed"))
     stringResponse  = response.getJson.toStringUtf8
-    _               <- putStrLn("\ngot response>\n")
+    _               <- putStrLn("\ngot response>\n| uid | message |")
     _               <- putStrLn(parseMessagesFromQueryResultString(stringResponse).fold(_ => "parsing failed", _.toString))
   } yield ()
 
